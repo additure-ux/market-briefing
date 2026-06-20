@@ -1,0 +1,32 @@
+name: Market Briefing
+
+on:
+  schedule:
+    - cron: "0 23 * * *"   # 23:00 UTC = 07:00 SGT  (morning edition)
+    - cron: "0 12 * * *"   # 12:00 UTC = 20:00 SGT  (pre-US-open edition)
+  workflow_dispatch:        # manual "Run workflow" button for testing
+
+jobs:
+  briefing:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Decide session
+        id: sess
+        run: |
+          HOUR=$(date -u +%H)
+          if [ "$HOUR" -lt 18 ]; then echo "session=evening" >> "$GITHUB_OUTPUT"; else echo "session=morning" >> "$GITHUB_OUTPUT"; fi
+
+      - name: Send briefing
+        env:
+          SESSION: ${{ steps.sess.outputs.session }}
+          FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python briefing.py
